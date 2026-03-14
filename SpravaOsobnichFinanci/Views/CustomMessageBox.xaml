@@ -1,0 +1,76 @@
+﻿<Window x:Class="SpravaOsobnichFinanci.Views.CustomMessageBox"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{Binding Title}" Width="400"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize" ShowInTaskbar="False">
+
+    <Border Background="White" CornerRadius="8" BorderBrush="#E0E0E0" BorderThickness="1" Margin="10">
+        <!-- Vytvoření hlubokého stínu pod oknem (nutné použít Margin 10 u Borderu nahoru, aby nedocházelo k uřezávání stínu okraji renderu) -->
+        <Border.Effect>
+            <DropShadowEffect Color="Black" Opacity="0.2" BlurRadius="10" ShadowDepth="3"/>
+        </Border.Effect>
+        
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- 1. ŘÁDEK | Hlavička (Top Bar) -->
+            <Border Grid.Row="0" Background="#F5F5F5" CornerRadius="8,8,0,0" Padding="15,10">
+                <TextBlock x:Name="TitleText" Text="Potvrzení" FontWeight="Bold" FontSize="16" Foreground="#333333"/>
+            </Border>
+
+            <!-- 2. ŘÁDEK | Zpráva (Body) -->
+            <TextBlock x:Name="MessageText" Grid.Row="1" Text="Opravdu chcete provést tuto akci?" 
+                       TextWrapping="Wrap" Margin="20" FontSize="14" Foreground="#555555" VerticalAlignment="Center"/>
+
+            <!-- 3. ŘÁDEK | Tlačítka (Controls) -->
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="15">
+                
+                <!-- Tlačítko OK (Ve výchozím stavu skryto. Programátovsky se zobrazuje jen pokud chceme Informační místo Potvrzovací struktury) -->
+                <Button x:Name="BtnOk" Content="OK" Width="80" Height="32" Visibility="Collapsed"
+                        Background="#2196F3" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand"
+                        Click="BtnOk_Click">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}" CornerRadius="4">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <!-- Tlačítko Ano (Pro potvrzení akce jako např smazání) -->
+                <Button x:Name="BtnYes" Content="Ano" Width="80" Height="32" Margin="0,0,10,0"
+                        Background="#F44336" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand"
+                        Click="BtnYes_Click">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}" CornerRadius="4">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+                
+                <!-- Tlačítko Ne (Pro zrušení akce v dialogu) -->
+                <Button x:Name="BtnNo" Content="Ne" Width="80" Height="32"
+                        Background="#E0E0E0" Foreground="#333333" FontWeight="Bold" BorderThickness="0" Cursor="Hand"
+                        Click="BtnNo_Click">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}" CornerRadius="4">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

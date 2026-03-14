@@ -1,0 +1,213 @@
+﻿<UserControl x:Class="SpravaOsobnichFinanci.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:SpravaOsobnichFinanci.Views"
+             xmlns:viewmodels="clr-namespace:SpravaOsobnichFinanci.ViewModels"
+             mc:Ignorable="d" 
+             d:DesignHeight="550" d:DesignWidth="800"
+             d:DataContext="{d:DesignInstance Type=viewmodels:SettingsViewModel}">
+
+    <!-- DEFINICE STYLŮ (Lokální resources platné pouze pro tento UserControl) -->
+    <UserControl.Resources>
+        <!-- Globální styl přepisující nativný vzhled tlačítek (přidání zaoblených rohů a průhlednosti při najetí myší) -->
+        <Style TargetType="Button">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Opacity" Value="0.8"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Kompletní přepsání vzhledu rozbalovacího tlačítka pro ComboBox -->
+        <!-- Standardní WPF ComboBox je nevzhledný. Toto mu dává plochý design (tzv. Flat Design) na míru. -->
+        <ControlTemplate x:Key="RedComboBoxToggleButton" TargetType="ToggleButton">
+            <Border x:Name="templateRoot" Background="#B71C1C" BorderBrush="#B71C1C" BorderThickness="1" CornerRadius="4">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <!-- Vykreslení vektorové šipky pomocí geometrické křivky (Path) M 0 0 L 4 4 L 8 0 Z -->
+                    <Path x:Name="arrow" Grid.Column="1" Fill="White" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8,0"
+                          Data="M 0 0 L 4 4 L 8 0 Z"/>
+                </Grid>
+            </Border>
+            
+            <!-- Triggery měnící odstín červené při interakci (Hover a Kliknutí/Otevření menu) -->
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter TargetName="templateRoot" Property="Background" Value="#8B0000"/>
+                    <Setter TargetName="templateRoot" Property="BorderBrush" Value="#8B0000"/>
+                </Trigger>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter TargetName="templateRoot" Property="Background" Value="#8B0000"/>
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+
+        <!-- Sestavení samotného ComboBoxu s využitím tlačítka výše + stylování vyskakovacího Popup panelu -->
+        <Style x:Key="RedComboBoxStyle" TargetType="ComboBox">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid x:Name="MainGrid">
+                            <ToggleButton x:Name="toggleButton" 
+                                          Template="{StaticResource RedComboBoxToggleButton}"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                          ClickMode="Press"/>
+                            
+                            <ContentPresenter x:Name="contentPresenter" 
+                                              IsHitTestVisible="False" 
+                                              Margin="8,0,25,0"
+                                              Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                              ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
+                            
+                            <!-- Vyskakovací seznam voleb opatřený Shadow efektem pro lepší prostorové odlišení od pozadí -->
+                            <Popup x:Name="PART_Popup" AllowsTransparency="True" IsOpen="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}" Placement="Bottom" PopupAnimation="Slide">
+                                <Border x:Name="dropDownBorder" Background="White" BorderThickness="0" CornerRadius="4" Margin="0,2,0,0" 
+                                        MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                                        Width="{Binding ActualWidth, ElementName=MainGrid}">
+                                    <Border.Effect>
+                                        <DropShadowEffect Color="Black" Opacity="0.2" BlurRadius="5" ShadowDepth="2"/>
+                                    </Border.Effect>
+                                    <ScrollViewer x:Name="DropDownScrollViewer">
+                                        <ItemsPresenter x:Name="ItemsPresenter" KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            
+            <!-- Úprava vzhledu konkrétních řádků uvnitř otevřeného ComboBoxu -->
+            <Setter Property="ItemContainerStyle">
+                <Setter.Value>
+                    <Style TargetType="ComboBoxItem">
+                        <Setter Property="Foreground" Value="Black"/>
+                        <Setter Property="Padding" Value="8,0"/>
+                        <Setter Property="Height" Value="32"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ComboBoxItem">
+                                    <Border x:Name="Bd" Background="Transparent" Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <!-- Podbarvení řádku seznamu světle šedou při najetí myší -->
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="Bd" Property="Background" Value="#EAEAEA"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                        <!-- Skrytí položky v případě, že už je právě vybraná jako hlavní -->
+                        <Style.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <Grid Margin="20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/> <!-- Nadpis -->
+                <RowDefinition Height="Auto"/> <!-- Karta: Obecné nastavení -->
+                <RowDefinition Height="Auto"/> <!-- Karta: Export dat -->
+                <RowDefinition Height="Auto"/> <!-- Karta: Nebezpečná zóna -->
+            </Grid.RowDefinitions>
+
+            <!-- Nadpis dokumentu -->
+            <TextBlock Grid.Row="0" Text="Nastavení aplikace" FontSize="24" FontWeight="Bold" Margin="0,0,0,30"/>
+
+            <!-- 1. KARTA | Obecné nastavení (Měny) -->
+            <Border Grid.Row="1" Background="White" CornerRadius="8" Padding="20" BorderBrush="#E0E0E0" BorderThickness="1" Margin="0,0,0,20">
+                <StackPanel>
+                    <TextBlock Text="Obecné" FontSize="18" FontWeight="Bold" Margin="0,0,0,15"/>
+
+                    <Grid Width="220" HorizontalAlignment="Left">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="100"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Column="0" Text="Výchozí měna:" VerticalAlignment="Center" Foreground="#555555" FontWeight="SemiBold"/>
+                        
+                        <ComboBox Grid.Column="1" ItemsSource="{Binding AvailableCurrencies}" 
+                                  SelectedItem="{Binding SelectedCurrency}" 
+                                  Style="{StaticResource RedComboBoxStyle}"/>
+                    </Grid>
+
+                    <Button Content="Uložit nastavení" Command="{Binding SaveSettingsCommand}" 
+                            Width="150" Height="35" HorizontalAlignment="Left" Margin="0,20,0,0"
+                            Background="#4CAF50" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                </StackPanel>
+            </Border>
+
+            <!-- 2. KARTA | Export záloh z databáze -->
+            <Border Grid.Row="2" Background="White" CornerRadius="8" Padding="20" BorderBrush="#E0E0E0" BorderThickness="1" Margin="0,0,0,20">
+                <StackPanel>
+                    <TextBlock Text="Export dat" FontSize="18" FontWeight="Bold" Margin="0,0,0,15"/>
+                    <TextBlock Text="Zálohujte si svá data nebo je exportujte pro další zpracování v tabulkovém procesoru (např. MS Excel) či jiných systémech." 
+                               Foreground="#555555" Margin="0,0,0,15" TextWrapping="Wrap"/>
+                    
+                    <!-- Horizontální rozložení tlačítek pomocí StackPanelu -->
+                    <StackPanel Orientation="Horizontal">
+                        <!-- Tlačítku se posílá dodatečný hardcoded text 'CSV' coby CommandParameter do ViewModelu. 
+                             Díky tomu stačí v C# jediná metoda ExportData (namísto více metod pro každý typ) -->
+                        <Button Content="Exportovat do CSV" 
+                                Command="{Binding ExportDataCommand}" 
+                                CommandParameter="CSV"
+                                Width="150" Height="35" Margin="0,0,10,0"
+                                Background="#2196F3" Foreground="White" FontWeight="Bold" BorderThickness="0"/>
+                        
+                        <Button Content="Exportovat do JSON" 
+                                Command="{Binding ExportDataCommand}" 
+                                CommandParameter="JSON"
+                                Width="150" Height="35" 
+                                Background="#9C27B0" Foreground="White" FontWeight="Bold" BorderThickness="0"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- 3. KARTA | Obnovení továrního nastavení (Danger Zone - odlišné barvy evokující varování) -->
+            <Border Grid.Row="3" Background="#FFF3F3" CornerRadius="8" Padding="20" BorderBrush="#FFCDD2" BorderThickness="1" Margin="0,0,0,20">
+                <StackPanel>
+                    <TextBlock Text="Obnovení továrního nastavení" FontSize="18" FontWeight="Bold" Foreground="#D32F2F" Margin="0,0,0,15"/>
+                    <TextBlock Text="Tato akce trvale smaže všechny transakce. Kategorie budou obnoveny do výchozího nastavení. Tuto akci nelze vzít zpět." 
+                               Foreground="#555555" Margin="0,0,0,15" TextWrapping="Wrap"/>
+
+                    <Button Content="Obnovit" Command="{Binding DeleteAllDataCommand}" 
+                            Width="150" Height="35" HorizontalAlignment="Left" Cursor="Hand"
+                            Background="#F44336" Foreground="White" FontWeight="Bold" BorderThickness="0"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </ScrollViewer>
+</UserControl>

@@ -1,0 +1,494 @@
+﻿<UserControl x:Class="SpravaOsobnichFinanci.Views.TransactionListView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:SpravaOsobnichFinanci.Views"
+             xmlns:viewmodels="clr-namespace:SpravaOsobnichFinanci.ViewModels"
+             xmlns:converters="clr-namespace:SpravaOsobnichFinanci.Converters"
+             mc:Ignorable="d" 
+             d:DesignHeight="500" d:DesignWidth="900"
+             d:DataContext="{d:DesignInstance Type=viewmodels:TransactionListViewModel}">
+
+    <UserControl.Resources>
+        <!-- Injektáž překladových konvertorů pro zpracování dat před jejich zobrazením v UI -->
+        <converters:TransactionTypeConverter x:Key="TransactionTypeConverter"/>
+        <converters:CurrencyConverter x:Key="CurrencyConverter"/>
+        <converters:IconConverter x:Key="IconConverter"/>
+
+        <!-- Komplexní přepracování vzhledu pro systémový DatePicker (Kalendář pro filtrování času).
+             Výchozí WPF prvek obsahuje nemoderní Windows tlačítko s malou ikonou. Tento styl z něj
+             dělá jednotné velké zaoblené 'flat' tlačítko (na míru), které po kliknutí kamkoliv vyvolá kalendář. -->
+        <Style x:Key="ReadOnlyDatePickerStyle" TargetType="DatePicker">
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="IsTabStop" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DatePicker">
+                        <Border Background="{TemplateBinding Background}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4">
+                            <Grid>
+                                <!-- Schované systémové tlačítko je zde roztaženo (Stretch) napříč celou plochou vstupního pole -->
+                                <Button x:Name="PART_Button" 
+                                        Grid.ColumnSpan="2" 
+                                        HorizontalAlignment="Stretch" 
+                                        VerticalAlignment="Stretch" 
+                                        HorizontalContentAlignment="Stretch"
+                                        Focusable="False" 
+                                        Cursor="Hand">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="Transparent" Name="BgBorder">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <!-- Přenášíme vybrané datum z kalendáře ven a rovnou ho lokálně formátujeme pro češtinu -->
+                                                    <TextBlock Grid.Column="0" 
+                                                               Text="{Binding SelectedDate, RelativeSource={RelativeSource AncestorType=DatePicker}, StringFormat=d, ConverterCulture=cs-CZ}" 
+                                                               Foreground="{TemplateBinding Foreground}" 
+                                                               VerticalAlignment="Center" 
+                                                               Margin="8,0,0,0"/>
+
+                                                    <!-- Vlastní vektorová ikona přes Font namísto rozmazaného grafického souboru kalendáře -->
+                                                    <TextBlock Grid.Column="1" 
+                                                               FontFamily="pack://application:,,,/Assets/Fonts/#Material Design Icons" 
+                                                               Text="&#xF00ED;" 
+                                                               FontSize="18" 
+                                                               Foreground="#B71C1C" 
+                                                               HorizontalAlignment="Center" 
+                                                               VerticalAlignment="Center" 
+                                                               Margin="0,0,8,0"/>
+                                                </Grid>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <!-- Efekt celistvého zešednutí při najetí myši na libovolnou část tohoto DatePickeru -->
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="BgBorder" Property="Background" Value="#F5F5F5"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                                
+                                <!-- Modifikace ohraničení (Popup okna) vyskakujícího kalendáře (Přidání moderního stínování) -->
+                                <Popup x:Name="PART_Popup" AllowsTransparency="True" Placement="Bottom" PlacementTarget="{Binding ElementName=PART_Button}" StaysOpen="False">
+                                    <Border Background="White" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="4" Margin="0,2,0,0">
+                                        <Border.Effect>
+                                            <DropShadowEffect Color="Black" Opacity="0.15" BlurRadius="5" ShadowDepth="2"/>
+                                        </Border.Effect>
+                                        <Calendar x:Name="PART_Calendar"/>
+                                    </Border>
+                                </Popup>
+                            </Grid>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- GLOBÁLNÍ STYL PRO ZAOBLENÁ TLAČÍTKA PLATNÝ JEN PRO TENTO POHLED -->
+        <Style TargetType="Button">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Opacity" Value="0.8"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Hlavička stránky a akční panel -->
+        <Grid Grid.Row="0" Margin="0,0,0,15">
+            <TextBlock Text="Seznam transakcí" FontSize="24" FontWeight="Bold" VerticalAlignment="Center"/>
+
+            <Button Command="{Binding AddTransactionCommand}" ToolTip="Nová transakce"
+                    HorizontalAlignment="Right" Width="35" Height="35" 
+                    Background="#4CAF50" Foreground="White" BorderThickness="0" Cursor="Hand">
+                <TextBlock FontFamily="pack://application:,,,/Assets/Fonts/#Material Design Icons" 
+                           Text="&#xF0415;" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Button>
+        </Grid>
+
+        <!-- Interaktivní navigační panel s filtry propisujícími se instantně skrze ICollectionView ve ViewModelu -->
+        <Border Grid.Row="1" Background="White" CornerRadius="8" Padding="15" BorderBrush="#E0E0E0" BorderThickness="1" Margin="0,0,0,15">
+            <Border.Effect>
+                <DropShadowEffect Color="Black" Opacity="0.05" BlurRadius="5" ShadowDepth="2"/>
+            </Border.Effect>
+            
+            <!-- Lokální zdroje uplatňující se pouze uvnitř Panelu Filtrování -->
+            <Border.Resources>
+                
+                <ControlTemplate x:Key="RedComboBoxToggleButton" TargetType="ToggleButton">
+                    <Border x:Name="templateRoot" Background="#B71C1C" BorderBrush="#B71C1C" BorderThickness="1" CornerRadius="4">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <!-- Vykreslení bílé šipky rozbalovacího menu -->
+                            <Path x:Name="arrow" Grid.Column="1" Fill="White" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="8,0"
+                                  Data="M 0 0 L 4 4 L 8 0 Z"/>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="templateRoot" Property="Background" Value="#8B0000"/>
+                            <Setter TargetName="templateRoot" Property="BorderBrush" Value="#8B0000"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="templateRoot" Property="Background" Value="#8B0000"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+
+                <Style x:Key="RedComboBoxStyle" TargetType="ComboBox">
+                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="Height" Value="32"/>
+                    <Setter Property="VerticalContentAlignment" Value="Center"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ComboBox">
+                                <Grid x:Name="MainGrid">
+                                    <ToggleButton x:Name="toggleButton" 
+                                                  Template="{StaticResource RedComboBoxToggleButton}"
+                                                  IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                                  ClickMode="Press"/>
+                                    
+                                    <ContentPresenter x:Name="contentPresenter" 
+                                                      IsHitTestVisible="False" 
+                                                      Margin="8,0,25,0"
+                                                      Content="{TemplateBinding SelectionBoxItem}"
+                                                      ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                      ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                      HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
+                                    
+                                    <!-- Logika zabraňující překrytí obsahu ComboBoxem, vyskočení vždy dolu (Placement=Bottom) -->
+                                    <Popup x:Name="PART_Popup" AllowsTransparency="True" IsOpen="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}" Placement="Bottom" PopupAnimation="Slide">
+                                        <Border x:Name="dropDownBorder" Background="White" BorderThickness="0" CornerRadius="4" Margin="0,2,0,0" 
+                                                MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                                                Width="{Binding ActualWidth, ElementName=MainGrid}">
+                                            <Border.Effect>
+                                                <DropShadowEffect Color="Black" Opacity="0.2" BlurRadius="5" ShadowDepth="2"/>
+                                            </Border.Effect>
+                                            <ScrollViewer x:Name="DropDownScrollViewer">
+                                                <ItemsPresenter x:Name="ItemsPresenter" KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                            </ScrollViewer>
+                                        </Border>
+                                    </Popup>
+                                </Grid>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                    <Setter Property="ItemContainerStyle">
+                        <Setter.Value>
+                            <Style TargetType="ComboBoxItem">
+                                <Setter Property="Foreground" Value="Black"/>
+                                <Setter Property="Padding" Value="8,0"/>
+                                <Setter Property="Height" Value="32"/> 
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ComboBoxItem">
+                                            <Border x:Name="Bd" Background="Transparent" Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="#EAEAEA"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+
+                <Style x:Key="RedTextBoxStyle" TargetType="TextBox">
+                    <Setter Property="Background" Value="White"/>
+                    <Setter Property="BorderBrush" Value="#B71C1C"/>
+                    <Setter Property="BorderThickness" Value="1"/>
+                    <Setter Property="Foreground" Value="Black"/>
+                    <Setter Property="Height" Value="32"/>
+                    <Setter Property="Padding" Value="8,0"/>
+                    <Setter Property="VerticalContentAlignment" Value="Center"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="TextBox">
+                                <Border x:Name="border" Background="{TemplateBinding Background}" 
+                                        BorderBrush="{TemplateBinding BorderBrush}" 
+                                        BorderThickness="{TemplateBinding BorderThickness}" 
+                                        CornerRadius="4">
+                                    <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="border" Property="Background" Value="#F5F5F5"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </Border.Resources>
+
+            <!-- Wrap Panel zaručuje, že pokud se okno zúží, filtry odtečou do druhého odstavce (responzivita) -->
+            <WrapPanel>
+
+                <!-- Hledání napříč poznámkami/popisy u plateb (Fulltext) -->
+                <StackPanel Margin="0,0,15,10" Width="150">
+                    <TextBlock Text="Hledat (Popis):" Foreground="#555555" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" 
+                             MaxLength="100"
+                             Style="{StaticResource RedTextBoxStyle}"/>
+                </StackPanel>
+
+                <!-- Filtr podle typu transakce (Zda chci pohled na Výdaje / Příjmy) -->
+                <StackPanel Margin="0,0,15,10" Width="120">
+                    <TextBlock Text="Typ:" Foreground="#555555" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <ComboBox ItemsSource="{Binding AvailableTypes}" 
+                              SelectedItem="{Binding SelectedFilterType}" 
+                              Style="{StaticResource RedComboBoxStyle}"/>
+                </StackPanel>
+
+                <!-- Pokročilý formulářový prvek pro volbu filtru nad konkrétními Kategoriemi vč. custom ikonek -->
+                <StackPanel Margin="0,0,15,10" Width="180">
+                    <TextBlock Text="Kategorie:" Foreground="#555555" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <ComboBox ItemsSource="{Binding AvailableCategories}" 
+                              SelectedItem="{Binding SelectedFilterCategory}" 
+                              Style="{StaticResource RedComboBoxStyle}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" MinHeight="20">
+                                    <Border Width="20" Height="20" CornerRadius="10"
+                                            Background="{Binding ColorHex}" Margin="0,0,8,0"
+                                            BorderBrush="White" BorderThickness="1.5">
+                                        <TextBlock Text="{Binding IconKey, Converter={StaticResource IconConverter}}"
+                                                   FontFamily="pack://application:,,,/Assets/Fonts/#Material Design Icons"
+                                                   FontSize="11" Foreground="White"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </StackPanel>
+
+                <!-- Filtr na časové okno (Kompaktně sdružené dva DatePickery "Od->Do") -->
+                <StackPanel Margin="0,0,15,10">
+                    <TextBlock Text="Období:" Foreground="#555555" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <Border BorderBrush="#B71C1C" BorderThickness="1" CornerRadius="4" Background="White" Height="32">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Od" VerticalAlignment="Center" Margin="8,0,4,0" Foreground="#9E9E9E" FontSize="11" FontWeight="SemiBold"/>
+                            <DatePicker SelectedDate="{Binding DateFrom}" Width="115" 
+                                        BorderThickness="0" Background="Transparent" VerticalContentAlignment="Center"
+                                        Style="{StaticResource ReadOnlyDatePickerStyle}" Foreground="Black"/>
+
+                            <!-- Estetická čárka rozdělující dvě data uvnitř obalovacího okraje -->
+                            <Border Width="1" Background="#B71C1C" Margin="2,6"/>
+
+                            <TextBlock Text="Do" VerticalAlignment="Center" Margin="8,0,4,0" Foreground="#9E9E9E" FontSize="11" FontWeight="SemiBold"/>
+                            <DatePicker SelectedDate="{Binding DateTo}" Width="115" 
+                                        BorderThickness="0" Background="Transparent" VerticalContentAlignment="Center"
+                                        Style="{StaticResource ReadOnlyDatePickerStyle}" Foreground="Black"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <Button Content="Zrušit filtry" Command="{Binding ClearFilterCommand}" 
+                        VerticalAlignment="Bottom" Height="32" Width="90" Margin="0,0,0,10"
+                        Background="#B71C1C" Foreground="White" FontWeight="SemiBold" BorderThickness="0" Cursor="Hand">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="border" Background="{TemplateBinding Background}" 
+                                                CornerRadius="4">
+                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="border" Property="Background" Value="#8B0000"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </Button.Style>
+                </Button>
+            </WrapPanel>
+        </Border>
+
+        <!-- Hlavní aplikační tabulka naplněná daty z ObservableCollection skrze ICollectionView -->
+        <Border Grid.Row="2" BorderBrush="#E0E0E0" BorderThickness="1" CornerRadius="8" Background="White">
+            <Grid>
+                <!-- Architektonický štít maskující nechtěné "ostré" hrany nativního obsahu WPF DataGridu pomocí Clipping logiky-->
+                <Border x:Name="Mask" Background="White" CornerRadius="7"/>
+                
+                <DataGrid ItemsSource="{Binding TransactionsView}" AutoGenerateColumns="False" 
+                          CanUserAddRows="False" IsReadOnly="True" Background="Transparent" BorderBrush="Transparent"
+                          GridLinesVisibility="None" RowHeight="45" CanUserResizeRows="False" 
+                          HeadersVisibility="Column" BorderThickness="0" FocusVisualStyle="{x:Null}">
+                    
+                    <DataGrid.OpacityMask>
+                        <VisualBrush Visual="{Binding ElementName=Mask}"/>
+                    </DataGrid.OpacityMask>
+                    
+                    <DataGrid.Resources>
+                        <Style TargetType="DataGridColumnHeader">
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Setter Property="Foreground" Value="Black"/>
+                            <Setter Property="FontWeight" Value="SemiBold"/>
+                            <Setter Property="Padding" Value="10,10,10,10"/>
+                            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                            <Setter Property="BorderBrush" Value="#E0E0E0"/>
+                        </Style>
+                        <Style TargetType="DataGridCell">
+                            <!-- Úplné potlačení modrého podkreslení buněk po kliknutí do těla tabulky (Aplikace nechce působit jako Excel) -->
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="Foreground" Value="Black"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.Resources>
+
+                    <DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow">
+                            <Setter Property="VerticalContentAlignment" Value="Center"/>
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Setter Property="BorderThickness" Value="0"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="Foreground" Value="Black"/>
+                                </Trigger>
+                                <!-- Barevný Hovering nad libovolným záznamem usnadňující čtení dat na velkém monitoru -->
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#F9F9F9"/>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.RowStyle>
+                    <DataGrid.Columns>
+
+                        <DataGridTemplateColumn Header="Kategorie" Width="80">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <!-- Renderování plně kruhového vizuálu s ikonou závislou na vytažené barvě ze spárované Kategorie z Databáze -->
+                                    <Border Width="28" Height="28" CornerRadius="14" 
+                                            Background="{Binding TransactionCategory.ColorHex}" ToolTip="{Binding TransactionCategory.Name}"
+                                            HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,0,0,0">
+                                        <TextBlock Text="{Binding TransactionCategory.IconKey, Converter={StaticResource IconConverter}}" 
+                                                   FontFamily="pack://application:,,,/Assets/Fonts/#Material Design Icons"
+                                                   FontSize="14" Foreground="White" 
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridTextColumn Header="Datum" Binding="{Binding Date, StringFormat={}{0:dd.MM.yyyy}}" Width="100">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                    <Setter Property="HorizontalAlignment" Value="Left"/>
+                                    <Setter Property="Margin" Value="10,0,0,0"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+
+                        <DataGridTextColumn Header="Popis" Binding="{Binding Description}" Width="*">
+                            <!-- Pokud je záznam široký, roztáhne se dynamicky díky Bindingu Width='*' do zbývající volné plochy obrazovky -->
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                    <Setter Property="HorizontalAlignment" Value="Left"/>
+                                    <Setter Property="Margin" Value="10,0,0,0"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        
+                        <DataGridTemplateColumn Header="Typ" Width="100">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Type, Converter={StaticResource TransactionTypeConverter}}" 
+                                               VerticalAlignment="Center" HorizontalAlignment="Left" Margin="10,0,0,0"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        
+                        <!-- Transformace částky do měny na základě globálního nastavení (CZK/€/$) a s oddělovačem tisíců  -->
+                        <DataGridTemplateColumn Header="Částka" Width="120">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Amount, Converter={StaticResource CurrencyConverter}}" 
+                                               VerticalAlignment="Center" HorizontalAlignment="Left" Margin="10,0,0,0"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <DataGridTemplateColumn Header="" Width="100">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="10,0,0,0">
+                                        <!-- Specifický RelativeSource binding odkazující se na DataContext celé stránky (Commandy neleží uvnitř DataGrid řádky/Kategorie) -->
+                                        <Button Command="{Binding DataContext.EditTransactionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}" ToolTip="Upravit"
+                                                Background="#FFC107" Foreground="White" BorderThickness="0" 
+                                                Width="32" Height="32" Margin="0,0,5,0" Cursor="Hand">
+                                            <TextBlock FontFamily="pack://application:,,,/Assets/Fonts/#Material Design Icons" 
+                                                       Text="&#xF03EB;" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Button>
+
+                                        <Button Command="{Binding DataContext.DeleteTransactionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}" ToolTip="Smazat"
+                                                Background="#F44336" Foreground="White" BorderThickness="0" 
+                                                Width="32" Height="32" Cursor="Hand">
+                                            <TextBlock FontFamily="pack://application:,,,/Assets/Fonts/#Material Design Icons" 
+                                                       Text="&#xF01B4;" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Button>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>
