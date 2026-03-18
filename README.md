@@ -57,3 +57,31 @@ Tento projekt byl vytvořen pro akademické účely jako bakalářská práce.
 
 ## 📄 License
 This project was created for academic purposes as a bachelor’s thesis.
+
+---
+
+# Screens
+
+Dashboard
+
+[Dashboard](https://i.imgur.com/fOuqXUF.png)
+
+Transaction List
+
+[Transaction List](https://i.imgur.com/fZtb0El.png)
+
+Transaction Editor
+
+[Transaction Editor](https://i.imgur.com/ujEAcSk.png)
+
+Categories
+
+[Categories](https://i.imgur.com/77xBKzo.png)
+
+Category Editor
+
+[Category Editor](https://i.imgur.com/DxoSyC9.png)
+
+Settings
+
+[Settings](https://i.imgur.com/Te1rShZ.png)
